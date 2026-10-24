@@ -1,0 +1,114 @@
+{
+  "brand_identity": {
+    "name": "Al-Kudsh",
+    "subtitle": "DIGITAL SOLUTIONS",
+    "tagline": "Your Ideas. Our Technology. Real Solutions.",
+    "homepage_headline": "We Build Digital Solutions That Move Your Business Forward.",
+    "brand_personality": "Trustworthy, innovative, modern, professional, precision-engineered",
+    "logo_direction": "Minimalist technology-inspired geometric symbol (layered diamond/cube with electric blue energy core) paired with tracking-wide serif/sans typography."
+  },
+  "design_archetype": {
+    "style": "Soft Neumorphic Tech Precision (Deep Navy + White + Electric Blue)",
+    "description": "Blends dark-mode tactical precision with soft tactile neumorphism. Surfaces feature subtle dual ambient highlights and shadows to create depth, paired with electric blue kinetic accents and crystal glass overlays."
+  },
+  "color_system": {
+    "palette": {
+      "navy_darkest": "#040814",
+      "navy_base": "#0A1128",
+      "navy_card": "#0F1A36",
+      "navy_elevated": "#152247",
+      "electric_blue": "#0066FF",
+      "electric_cyan": "#00E5FF",
+      "electric_glow": "rgba(0, 102, 255, 0.4)",
+      "text_primary": "#FFFFFF",
+      "text_secondary": "#94A3B8",
+      "text_muted": "#64748B",
+      "border_navy": "rgba(255, 255, 255, 0.08)",
+      "border_active": "rgba(0, 102, 255, 0.6)"
+    },
+    "css_variables": {
+      "--bg-main": "#0A1128",
+      "--bg-card": "#0F1A36",
+      "--bg-card-raised": "#152247",
+      "--color-primary": "#0066FF",
+      "--color-accent": "#00E5FF",
+      "--text-main": "#FFFFFF",
+      "--text-sub": "#94A3B8"
+    }
+  },
+  "neumorphic_recipes": {
+    "navy_raised": "8px 8px 16px #060a19, -8px -8px 16px #0e1837",
+    "navy_pressed": "inset 4px 4px 8px #060a19, inset -4px -4px 8px #0e1837",
+    "navy_glow": "0 0 25px rgba(0, 102, 255, 0.3), 6px 6px 14px #060a19, -6px -6px 14px #0e1837",
+    "navy_card_hover": "12px 12px 24px #050815, -12px -12px 24px #0f1a3b",
+    "light_raised": "6px 6px 12px #cbd5e1, -6px -6px 12px #ffffff",
+    "light_pressed": "inset 3px 3px 6px #cbd5e1, inset -3px -3px 6px #ffffff"
+  },
+  "typography": {
+    "heading_font": "Outfit, sans-serif",
+    "body_font": "Plus Jakarta Sans, sans-serif",
+    "mono_font": "JetBrains Mono, monospace",
+    "scale": {
+      "h1": "text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-none",
+      "h2": "text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight",
+      "h3": "text-xl sm:text-2xl font-semibold",
+      "body": "text-base sm:text-lg leading-relaxed text-slate-300",
+      "overline": "text-xs font-mono uppercase tracking-[0.25em] text-cyan-400"
+    }
+  },
+  "layout_and_bento": {
+    "spacing_philosophy": "Generous spacing system (p-6, p-8, p-12, py-20, py-32). Containers with borders must have internal padding.",
+    "hero_grid": "Full width kinetic hero with split 70/30 layout. Left side headline reveal & CTAs; right side interactive 3D code matrix card.",
+    "services_grid": "3x3 Neumorphic Grid featuring 9 dedicated service modules with custom icons, hover glow state, and interactive detail modals.",
+    "portfolio_grid": "Asymmetric Bento Grid (Featured 8-col span project + 4-col spotlight items) with live filter tags."
+  },
+  "services": [
+    { "id": "web-dev", "name": "Website Development", "desc": "High-conversion, ultra-fast marketing & enterprise web presences." },
+    { "id": "mobile-apps", "name": "Mobile App Development", "desc": "Native iOS & Android experiences built for performance and scale." },
+    { "id": "web-apps", "name": "Web Applications", "desc": "Complex SaaS platforms, client portals, and cloud web software." },
+    { "id": "desktop-software", "name": "Desktop Software", "desc": "Cross-platform desktop tools with offline resilience and native speed." },
+    { "id": "ai-integration", "name": "AI Integration", "desc": "Custom LLM agents, workflow automation, and predictive analytics." },
+    { "id": "school-mgmt", "name": "School Management Systems", "desc": "All-in-one academic, grading, parent portal, and billing platforms." },
+    { "id": "restaurant-mgmt", "name": "Restaurant Management Systems", "desc": "POS, kitchen display, inventory control, and table management." },
+    { "id": "booking-platforms", "name": "Booking Platforms", "desc": "Automated reservation, ticketing, and appointment scheduling engines." },
+    { "id": "custom-software", "name": "Custom Business Software", "desc": "Bespoke ERP, CRM, and operational automation tailored to your flow." }
+  ],
+  "motion_spec": {
+    "scroll": "Lenis smooth scrolling integration with custom damping",
+    "headline_reveal": "Line-by-line staggered text reveal using Framer Motion (y: '100%' -> 0)",
+    "card_hover": "Hover lift transform (-translate-y-2), neumorphic shadow expansion, and 1px border light bleed",
+    "marquee": "Slow editorial drift of tech stack & agency principles"
+  },
+  "image_urls": {
+    "hero_mockup": "https://images.unsplash.com/photo-1660144425546-b07680e711d1?crop=entropy&cs=srgb&fm=jpg&w=1200&q=85",
+    "portfolio": [
+      {
+        "title": "Fintech Mobile Core & Wallet",
+        "category": "Mobile Apps",
+        "url": "https://images.pexels.com/photos/29502368/pexels-photo-29502368.jpeg?auto=compress&cs=tinysrgb&w=800"
+      },
+      {
+        "title": "Omni-Channel Analytics Platform",
+        "category": "Web Applications",
+        "url": "https://images.unsplash.com/photo-1584472666879-7d92db132958?crop=entropy&cs=srgb&fm=jpg&w=800"
+      },
+      {
+        "title": "AI Enterprise Neural Engine",
+        "category": "AI Integration",
+        "url": "https://images.pexels.com/photos/34803990/pexels-photo-34803990.jpeg?auto=compress&cs=tinysrgb&w=800"
+      },
+      {
+        "title": "Academia360 School Portal",
+        "category": "School Management",
+        "url": "https://images.unsplash.com/photo-1659035260002-11d486d6e9f5?crop=entropy&cs=srgb&fm=jpg&w=800"
+      }
+    ],
+    "team": "https://images.unsplash.com/photo-1522071820081-009f0129c71c?crop=entropy&cs=srgb&fm=jpg&w=800",
+    "workspace": "https://images.pexels.com/photos/34803994/pexels-photo-34803994.jpeg?auto=compress&cs=tinysrgb&w=800"
+  },
+  "UNIVERSAL GUIDELINES FOR MAIN AGENT": {
+    "testing_requirement": "All interactive elements (buttons, inputs, links, tabs, forms, filter buttons) MUST include a unique data-testid attribute in kebab-case format (e.g. data-testid='quote-submit-btn').",
+    "navigation_requirement": "Header must have visible desktop navigation links, logo with subtitle 'DIGITAL SOLUTIONS', and CTA button with glassmorphism backdrop.",
+    "admin_dashboard_requirement": "Admin panel must manage Quotes, Contact Messages, Portfolio Items, and Services Content in a matching Neumorphic Dark Navy UI."
+  }
+}
