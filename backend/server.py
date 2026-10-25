@@ -49,6 +49,8 @@ EMAIL_KEY = os.environ.get("EMERGENT_EMAIL_KEY", "")
 EMAIL_FROM_NAME = os.environ.get("EMAIL_FROM_NAME", "Al-Kudsh Digital Solutions")
 EMAIL_REPLY_TO = os.environ.get("EMAIL_REPLY_TO")
 OWNER_EMAIL = os.environ.get("OWNER_EMAIL", "")
+RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
+RESEND_FROM = os.environ.get("RESEND_FROM", "Al-Kudsh Digital Solutions <onboarding@resend.dev>")
 
 PyObjectId = Annotated[str, BeforeValidator(str)]
 
@@ -145,6 +147,22 @@ def _assert_safe_email(subject: str, html: str) -> None:
 
 async def send_email(*, to: str, subject: str, html: str, reply_to: Optional[str] = None) -> Optional[str]:
     _assert_safe_email(subject, html)
+    if RESEND_API_KEY:
+        # Direct Resend API (works on any host, plain HTTPS)
+        body = {"from": RESEND_FROM, "to": [to], "subject": subject, "html": html}
+        if reply_to or EMAIL_REPLY_TO:
+            body["reply_to"] = reply_to or EMAIL_REPLY_TO
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.post(
+                "https://api.resend.com/emails",
+                headers={"Authorization": f"Bearer {RESEND_API_KEY}"},
+                json=body,
+            )
+        if resp.status_code >= 400:
+            raise RuntimeError(f"Resend error {resp.status_code}: {resp.text}")
+        return resp.json().get("id")
+    if not EMAIL_KEY:
+        raise RuntimeError("No email provider configured: set RESEND_API_KEY (or EMERGENT_EMAIL_KEY)")
     payload = {"to": [to], "subject": subject, "html": html, "from_name": EMAIL_FROM_NAME}
     if reply_to or EMAIL_REPLY_TO:
         payload["contact_email"] = reply_to or EMAIL_REPLY_TO
@@ -444,6 +462,12 @@ def now_naive_utc() -> datetime:
 
 # ---------- App ----------
 
+# Frontend origins allowed to call the API from a different host (set CORS_ORIGINS on the server)
+CORS_ORIGIN_LIST = [o.strip().rstrip("/") for o in os.environ.get("CORS_ORIGINS", "*").split(",") if o.strip()]
+TRUSTED_ORIGIN_HOSTS = {
+    (urlparse(o).hostname or "") for o in CORS_ORIGIN_LIST if o != "*" and urlparse(o).hostname
+}
+
 limiter = Limiter(key_func=get_remote_address, default_limits=["300/minute"])
 app = FastAPI(title="Al-Kudsh API")
 app.state.limiter = limiter
@@ -461,7 +485,7 @@ async def security_headers(request: Request, call_next):
         if origin:
             origin_host = urlparse(origin).netloc.split(":")[0]
             host = (request.headers.get("x-forwarded-host") or request.url.hostname or "").split(":")[0]
-            if origin_host != host:
+            if origin_host != host and origin_host not in TRUSTED_ORIGIN_HOSTS:
                 return JSONResponse(status_code=403, content={"detail": "Cross-origin request blocked"})
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
@@ -766,7 +790,7 @@ app.include_router(build_codebase_router(db, get_current_admin), prefix="/api")
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get("CORS_ORIGINS", "*").split(","),
+    allow_origins=CORS_ORIGIN_LIST or ["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
