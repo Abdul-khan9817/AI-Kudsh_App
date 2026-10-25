@@ -5,10 +5,13 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
 
 import asyncio
+import hashlib
+import hmac
 import ipaddress
 import logging
 import os
 import re
+import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
 from html import escape
@@ -37,6 +40,9 @@ JWT_ALGORITHM = "HS256"
 TOKEN_TTL_HOURS = 24
 MAX_FAILED_ATTEMPTS = 5
 LOCKOUT_MINUTES = 15
+RESET_CODE_TTL_MINUTES = 10
+RESET_MAX_ATTEMPTS = 5
+RESET_RESEND_SECONDS = 60
 
 EMAIL_BASE_URL = "https://integrations.emergentagent.com"
 EMAIL_KEY = os.environ.get("EMERGENT_EMAIL_KEY", "")
@@ -187,6 +193,32 @@ async def notify_quote(quote: "Quote") -> None:
         logger.error("Quote notification email failed (quote still saved): %s", str(e))
 
 
+async def send_reset_code_email(to: str, code: str) -> None:
+    try:
+        subject = "Your Al-Kudsh admin verification code"
+        html = (
+            '<table role="presentation" width="100%" style="background:#F1F5F9;padding:24px">'
+            '<tr><td align="center"><table role="presentation" width="560" style="background:#FFFFFF;'
+            'border-radius:12px;padding:8px 0;font-family:Arial,sans-serif">'
+            '<tr><td style="padding:20px 24px 8px;font-size:18px;font-weight:bold;color:#0A1128">'
+            'Admin password reset</td></tr>'
+            '<tr><td style="padding:0 24px 16px;font-size:14px;color:#475569;line-height:1.6">'
+            'Use the verification code below to set a new admin password. '
+            f'It expires in {RESET_CODE_TTL_MINUTES} minutes and works once.</td></tr>'
+            '<tr><td align="center" style="padding:8px 24px 20px">'
+            '<div style="display:inline-block;background:#0A1128;color:#F0B940;font-size:32px;'
+            f'font-weight:bold;letter-spacing:10px;padding:14px 26px;border-radius:10px">{escape(code)}</div>'
+            '</td></tr>'
+            '<tr><td style="padding:0 24px 20px;font-size:12px;color:#94A3B8;line-height:1.6">'
+            'If you did not request this, you can ignore this email. Your password stays unchanged.'
+            '</td></tr></table></td></tr></table>'
+        )
+        email_id = await send_email(to=to, subject=subject, html=html)
+        logger.info("Password reset code email sent: %s", email_id)
+    except Exception as e:
+        logger.error("Password reset email failed: %s", str(e))
+
+
 # ---------- Base document ----------
 
 class BaseDocument(BaseModel):
@@ -263,6 +295,16 @@ class ContactMessage(BaseDocument):
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    email: EmailStr
+    code: str = Field(pattern=r"^\d{6}$")
+    new_password: str = Field(min_length=8, max_length=128)
 
 
 class PasswordChange(BaseModel):
@@ -389,6 +431,17 @@ async def record_failed_attempt(identifier: str):
     await db.login_attempts.update_one({"identifier": identifier}, {"$set": update}, upsert=True)
 
 
+# ---------- Password reset helpers ----------
+
+def hash_reset_code(email: str, code: str) -> str:
+    return hmac.new(JWT_SECRET.encode("utf-8"), f"{email}:{code}".encode("utf-8"), hashlib.sha256).hexdigest()
+
+
+def now_naive_utc() -> datetime:
+    # Mongo returns naive UTC datetimes, so compare against a naive UTC "now"
+    return now_utc().replace(tzinfo=None)
+
+
 # ---------- App ----------
 
 limiter = Limiter(key_func=get_remote_address, default_limits=["300/minute"])
@@ -489,6 +542,60 @@ async def login(request: Request, body: LoginRequest, response: Response):
         samesite="none", max_age=TOKEN_TTL_HOURS * 3600, path="/",
     )
     return {"token": token, "admin": {"email": email, "name": admin.get("name", "Admin")}}
+
+
+FORGOT_GENERIC = {
+    "ok": True,
+    "message": "If that email belongs to an admin account, a verification code has been sent.",
+}
+
+
+@api_router.post("/auth/forgot-password")
+@limiter.limit("3/minute")
+async def forgot_password(request: Request, body: ForgotPasswordRequest):
+    email = body.email.lower().strip()
+    admin = await db.admins.find_one({"email": email})
+    if not admin:
+        return FORGOT_GENERIC  # same answer whether or not the account exists
+    rec = await db.password_resets.find_one({"_id": admin["_id"]})
+    if rec and (now_naive_utc() - rec["created_at"]).total_seconds() < RESET_RESEND_SECONDS:
+        return FORGOT_GENERIC  # resend cooldown
+    code = f"{secrets.randbelow(1_000_000):06d}"
+    now = now_naive_utc()
+    await db.password_resets.replace_one(
+        {"_id": admin["_id"]},
+        {
+            "_id": admin["_id"], "email": email, "code_hash": hash_reset_code(email, code),
+            "attempts": 0, "created_at": now,
+            "expires_at": now + timedelta(minutes=RESET_CODE_TTL_MINUTES),
+        },
+        upsert=True,
+    )
+    asyncio.create_task(send_reset_code_email(email, code))
+    return FORGOT_GENERIC
+
+
+@api_router.post("/auth/reset-password")
+@limiter.limit("5/minute")
+async def reset_password(request: Request, body: ResetPasswordRequest):
+    email = body.email.lower().strip()
+    invalid = HTTPException(status_code=400, detail="Invalid or expired verification code")
+    admin = await db.admins.find_one({"email": email})
+    if not admin:
+        raise invalid
+    rec = await db.password_resets.find_one({"_id": admin["_id"]})
+    if not rec or rec["expires_at"] < now_naive_utc() or rec.get("attempts", 0) >= RESET_MAX_ATTEMPTS:
+        if rec:
+            await db.password_resets.delete_one({"_id": admin["_id"]})
+        raise invalid
+    if not hmac.compare_digest(rec["code_hash"], hash_reset_code(email, body.code)):
+        await db.password_resets.update_one({"_id": admin["_id"]}, {"$inc": {"attempts": 1}})
+        raise invalid
+    await db.admins.update_one({"_id": admin["_id"]}, {"$set": {"password_hash": hash_password(body.new_password)}})
+    await db.password_resets.delete_one({"_id": admin["_id"]})
+    await db.login_attempts.delete_many({"identifier": {"$regex": f":{re.escape(email)}$"}})
+    logger.info("Admin password reset via email code for %s", email)
+    return {"ok": True}
 
 
 @api_router.get("/auth/me")
@@ -723,6 +830,7 @@ async def seed_admin():
 async def startup():
     await db.admins.create_index("email", unique=True)
     await db.login_attempts.create_index("identifier")
+    await db.password_resets.create_index("expires_at", expireAfterSeconds=0)
     await seed_admin()
     if await db.services.count_documents({}) == 0:
         await db.services.insert_many([Service(**s).to_mongo() for s in SERVICES_SEED])

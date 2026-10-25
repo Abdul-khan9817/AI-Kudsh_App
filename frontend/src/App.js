@@ -12,6 +12,7 @@ import Portfolio from "@/pages/Portfolio";
 import Quote from "@/pages/Quote";
 import Contact from "@/pages/Contact";
 import AdminLogin from "@/pages/admin/Login";
+import AdminForgotPassword from "@/pages/admin/ForgotPassword";
 import AdminDashboard from "@/pages/admin/Dashboard";
 
 function Shell() {
@@ -31,6 +32,7 @@ function Shell() {
         <Route path="/quote" element={<Quote />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/admin/login" element={<AdminLogin />} />
+        <Route path="/admin/forgot-password" element={<AdminForgotPassword />} />
         <Route path="/admin" element={<AdminDashboard />} />
       </Routes>
       {!isAdmin && <Footer />}

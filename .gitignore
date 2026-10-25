@@ -1,0 +1,5 @@
+.env
+__pycache__/
+.emergent/
+venv/
+node_modules/
